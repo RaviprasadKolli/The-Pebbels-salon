@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navigation from "./components/Navigation";
 import HeroSection from "./components/HeroSection";
 import ServicesSection from "./components/ServicesSection";
@@ -36,7 +36,15 @@ const checkAdminSession = () => {
 
 function App() {
   const [activeSection, setActiveSection] = useState("home");
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings] = useState(() => {
+    try {
+      const savedBookings = localStorage.getItem("salonBookings");
+      return savedBookings ? JSON.parse(savedBookings) : [];
+    } catch (error) {
+      console.error("Error loading bookings:", error);
+      return [];
+    }
+  });
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   // Initialize authentication state using the helper function
@@ -69,6 +77,16 @@ function App() {
     }
   };
 
+  // Save bookings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem("salonBookings", JSON.stringify(bookings));
+      console.log("💾 Bookings saved to localStorage:", bookings.length);
+    } catch (error) {
+      console.error("Error saving bookings:", error);
+    }
+  }, [bookings]);
+
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setShowAdminLogin(false);
@@ -95,21 +113,26 @@ function App() {
       status: "pending",
       createdAt: new Date().toISOString(),
     };
-    setBookings([...bookings, newBooking]);
 
-    // Auto-scroll to status section after booking
+    setBookings((prevBookings) => [...prevBookings, newBooking]);
+    console.log("✅ New booking added:", newBooking);
+
     setTimeout(() => {
       scrollToSection("status");
     }, 1000);
   };
 
   const updateBookingStatus = (id, status) => {
-    setBookings(bookings.map((b) => (b.id === id ? { ...b, status } : b)));
+    setBookings((prevBookings) =>
+      prevBookings.map((b) => (b.id === id ? { ...b, status } : b))
+    );
+    console.log(`✅ Booking ${id} status updated to: ${status}`);
   };
 
   const deleteBooking = (id) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
-      setBookings(bookings.filter((b) => b.id !== id));
+      setBookings((prevBookings) => prevBookings.filter((b) => b.id !== id));
+      console.log(`🗑️ Booking ${id} deleted`);
     }
   };
 
