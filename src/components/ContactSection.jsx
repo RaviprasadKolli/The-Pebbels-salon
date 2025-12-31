@@ -8,7 +8,7 @@ export default function ContactSection() {
     import.meta.env.VITE_SALON_EMAIL || "raviprasadkolli123@gmail.com";
   const salonAddress =
     import.meta.env.VITE_SALON_ADDRESS ||
-    "6-46/1, Sherlingampalli, Hyderabad, Telangana 500019";
+    "6-46/1, Sherlingampalli, Hyderabad, Telangana, 500019";
   const mapsLink =
     import.meta.env.VITE_MAPS_LINK ||
     "https://maps.app.goo.gl/qiddfrRpYw91GrFL6";
