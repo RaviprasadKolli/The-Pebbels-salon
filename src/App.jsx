@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Navigation from "./components/Navigation";
 import HeroSection from "./components/HeroSection";
 import ServicesSection from "./components/ServicesSection";
@@ -9,6 +9,11 @@ import AdminPanel from "./components/AdminPanel";
 import AdminLogin from "./components/AdminLogin";
 import BookingStatus from "./components/BookingStatus";
 import Footer from "./components/Footer";
+import {
+  getAllBookings,
+  updateBookingStatus as updateBookingStatusInDB,
+  deleteBooking as deleteBookingFromDB,
+} from "./services/storageService";
 
 // Helper function to check if admin session is valid
 const checkAdminSession = () => {
@@ -24,7 +29,6 @@ const checkAdminSession = () => {
   const timeSinceLogin = Date.now() - new Date(loginTime).getTime();
 
   if (timeSinceLogin > eightHours) {
-    // Clear expired session
     localStorage.removeItem("isAdmin");
     localStorage.removeItem("adminEmail");
     localStorage.removeItem("loginTime");
@@ -36,21 +40,32 @@ const checkAdminSession = () => {
 
 function App() {
   const [activeSection, setActiveSection] = useState("home");
-  const [bookings, setBookings] = useState(() => {
-    try {
-      const savedBookings = localStorage.getItem("salonBookings");
-      return savedBookings ? JSON.parse(savedBookings) : [];
-    } catch (error) {
-      console.error("Error loading bookings:", error);
-      return [];
-    }
-  });
+  const [bookings, setBookings] = useState([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  // Initialize authentication state using the helper function
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
     checkAdminSession()
   );
+
+  // Load bookings from Firebase when app starts
+
+  // Load bookings from Firebase
+  const loadBookings = useCallback(() => {
+    setIsLoadingBookings(true);
+
+    // Get bookings from localStorage (synchronous)
+    const bookings = getAllBookings();
+    setBookings(bookings);
+    console.log("📚 Loaded bookings:", bookings.length);
+
+    setIsLoadingBookings(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBookings();
+  }, [loadBookings]);
 
   const scrollToSection = (section) => {
     setActiveSection(section);
@@ -61,10 +76,10 @@ function App() {
 
   const handleAdminClick = () => {
     if (isAuthenticated) {
-      // Already logged in, toggle admin panel
       setIsAdminMode(!isAdminMode);
       if (!isAdminMode) {
-        // Scroll to admin panel when opening
+        // Reload bookings when opening admin panel
+        loadBookings();
         setTimeout(() => {
           document
             .getElementById("admin")
@@ -72,26 +87,15 @@ function App() {
         }, 100);
       }
     } else {
-      // Not logged in, show login modal
       setShowAdminLogin(true);
     }
   };
-
-  // Save bookings to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem("salonBookings", JSON.stringify(bookings));
-      console.log("💾 Bookings saved to localStorage:", bookings.length);
-    } catch (error) {
-      console.error("Error saving bookings:", error);
-    }
-  }, [bookings]);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setShowAdminLogin(false);
     setIsAdminMode(true);
-    // Scroll to admin panel
+    loadBookings();
     setTimeout(() => {
       document.getElementById("admin")?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -106,39 +110,40 @@ function App() {
     scrollToSection("home");
   };
 
-  const addBooking = (booking) => {
-    const newBooking = {
-      id: Date.now(),
-      ...booking,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-
-    setBookings((prevBookings) => [...prevBookings, newBooking]);
-    console.log("✅ New booking added:", newBooking);
-
+  const handleBookingSuccess = () => {
+    // Reload bookings after new booking
+    loadBookings();
     setTimeout(() => {
       scrollToSection("status");
     }, 1000);
   };
 
-  const updateBookingStatus = (id, status) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((b) => (b.id === id ? { ...b, status } : b))
-    );
-    console.log(`✅ Booking ${id} status updated to: ${status}`);
+  const updateBookingStatus = async (id, status) => {
+    const result = await updateBookingStatusInDB(id, status);
+    if (result.success) {
+      // Update local state
+      setBookings((prevBookings) =>
+        prevBookings.map((b) => (b.id === id ? { ...b, status } : b))
+      );
+    } else {
+      alert("Failed to update booking status: " + result.error);
+    }
   };
 
-  const deleteBooking = (id) => {
+  const deleteBooking = async (id) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
-      setBookings((prevBookings) => prevBookings.filter((b) => b.id !== id));
-      console.log(`🗑️ Booking ${id} deleted`);
+      const result = await deleteBookingFromDB(id);
+      if (result.success) {
+        // Remove from local state
+        setBookings((prevBookings) => prevBookings.filter((b) => b.id !== id));
+      } else {
+        alert("Failed to delete booking: " + result.error);
+      }
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-      {/* Admin Login Modal */}
       {showAdminLogin && (
         <AdminLogin
           onLoginSuccess={handleLoginSuccess}
@@ -157,20 +162,21 @@ function App() {
 
       <HeroSection scrollToSection={scrollToSection} />
       <ServicesSection />
-      <BookingSection onBookingSubmit={addBooking} />
+      <BookingSection onBookingSuccess={handleBookingSuccess} />
       <ReviewsSection />
       <ContactSection />
 
-      {/* Booking Status - Available to ALL users */}
-      <BookingStatus bookings={bookings} />
+      {/* Booking Status - Uses Firebase */}
+      <BookingStatus />
 
-      {/* Admin Panel - Only visible when authenticated AND admin mode is active */}
       {isAuthenticated && isAdminMode && (
         <div id="admin">
           <AdminPanel
             bookings={bookings}
+            isLoading={isLoadingBookings}
             updateBookingStatus={updateBookingStatus}
             deleteBooking={deleteBooking}
+            onRefresh={loadBookings}
           />
         </div>
       )}

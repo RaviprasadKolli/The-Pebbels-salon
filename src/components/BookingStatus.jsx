@@ -10,8 +10,12 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
+import {
+  getBookingsByEmail,
+  getBookingsByPhone,
+} from "../services/storageService";
 
-export default function BookingStatus({ bookings }) {
+export default function BookingStatus() {
   const [searchEmail, setSearchEmail] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
   const [foundBookings, setFoundBookings] = useState([]);
@@ -21,21 +25,33 @@ export default function BookingStatus({ bookings }) {
   const handleSearch = (e) => {
     e.preventDefault();
     setIsSearching(true);
+    setSearched(false);
 
-    // Simulate search delay
+    // Simulate loading delay for better UX
     setTimeout(() => {
-      const results = bookings.filter(
-        (booking) =>
-          (searchEmail &&
-            booking.email.toLowerCase() === searchEmail.toLowerCase()) ||
-          (searchPhone &&
-            booking.phone.replace(/\D/g, "") === searchPhone.replace(/\D/g, ""))
-      );
+      try {
+        let result;
 
-      setFoundBookings(results);
+        if (searchEmail) {
+          result = getBookingsByEmail(searchEmail);
+        } else if (searchPhone) {
+          result = getBookingsByPhone(searchPhone);
+        }
+
+        if (result && result.success) {
+          setFoundBookings(result.bookings);
+          console.log("Found bookings:", result.bookings.length);
+        } else {
+          setFoundBookings([]);
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+        setFoundBookings([]);
+      }
+
       setSearched(true);
       setIsSearching(false);
-    }, 500);
+    }, 300);
   };
 
   const getStatusIcon = (status) => {
@@ -78,7 +94,6 @@ export default function BookingStatus({ bookings }) {
       className="py-20 px-4 bg-gradient-to-br from-gray-50 to-white"
     >
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
             Check Booking Status
@@ -88,7 +103,6 @@ export default function BookingStatus({ bookings }) {
           </p>
         </div>
 
-        {/* Search Form */}
         <div className="bg-white p-8 rounded-2xl shadow-xl mb-8">
           <form onSubmit={handleSearch} className="space-y-6">
             <div>
@@ -178,7 +192,6 @@ export default function BookingStatus({ bookings }) {
           </form>
         </div>
 
-        {/* Search Results */}
         {searched && (
           <div>
             {foundBookings.length === 0 ? (
@@ -228,7 +241,6 @@ export default function BookingStatus({ bookings }) {
                     key={booking.id}
                     className="bg-white border-2 border-gray-100 rounded-2xl p-6 hover:shadow-xl transition-all"
                   >
-                    {/* Status Badge */}
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center space-x-3">
                         {getStatusIcon(booking.status)}
@@ -241,13 +253,11 @@ export default function BookingStatus({ bookings }) {
                         </span>
                       </div>
                       <span className="text-sm text-gray-500">
-                        Booking #{booking.id}
+                        Booking #{booking.id.substring(0, 8)}
                       </span>
                     </div>
 
-                    {/* Booking Details */}
                     <div className="grid md:grid-cols-2 gap-6">
-                      {/* Left Column */}
                       <div className="space-y-4">
                         <div className="flex items-start space-x-3">
                           <User className="w-5 h-5 text-pink-600 mt-1 flex-shrink-0" />
@@ -282,7 +292,6 @@ export default function BookingStatus({ bookings }) {
                         </div>
                       </div>
 
-                      {/* Right Column */}
                       <div className="space-y-4">
                         <div className="flex items-start space-x-3">
                           <svg
@@ -330,7 +339,6 @@ export default function BookingStatus({ bookings }) {
                       </div>
                     </div>
 
-                    {/* Notes */}
                     {booking.notes && (
                       <div className="mt-6 pt-6 border-t border-gray-200">
                         <p className="text-sm text-gray-500 mb-2">
@@ -342,7 +350,6 @@ export default function BookingStatus({ bookings }) {
                       </div>
                     )}
 
-                    {/* Status Message */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       {booking.status === "pending" && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start">

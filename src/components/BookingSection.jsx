@@ -4,6 +4,7 @@ import {
   sendBookingConfirmation,
   sendAdminNotification,
 } from "./utils/emailService";
+import { addBooking } from "../services/storageService";
 
 // Service ID: service_2j4xuub
 // Template ID (Customer): template_e7dp1c6
@@ -23,7 +24,7 @@ const TIME_SLOTS = [
   "18:00",
 ];
 
-export default function BookingSection({ onBookingSubmit }) {
+export default function BookingSection({ onBookingSuccess }) {
   const [bookingForm, setBookingForm] = useState({
     name: "",
     email: "",
@@ -210,56 +211,76 @@ export default function BookingSection({ onBookingSubmit }) {
     // Show loading notification
     showNotification("Submitting booking...", "success");
 
-    // Submit booking
-    onBookingSubmit(bookingForm);
-
-    // Send emails in the background
     try {
-      // Send confirmation to customer
-      const customerResult = await sendBookingConfirmation(bookingForm);
-      console.log("Customer email result:", customerResult);
+      // Save to localStorage
+      const result = addBooking({
+        ...bookingForm,
+        email: bookingForm.email.toLowerCase(),
+      });
 
-      // Send notification to admin
-      const adminResult = await sendAdminNotification(bookingForm);
-      console.log("Admin email result:", adminResult);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
-      if (customerResult.success && adminResult.success) {
+      console.log("✅ Booking saved");
+
+      // Send emails
+      try {
+        const customerResult = await sendBookingConfirmation(bookingForm);
+        const adminResult = await sendAdminNotification(bookingForm);
+
+        if (customerResult.success && adminResult.success) {
+          showNotification(
+            "✅ Booking submitted! Check your email for confirmation.",
+            "success"
+          );
+        } else if (customerResult.success) {
+          showNotification(
+            "✅ Booking submitted! Confirmation email sent.",
+            "success"
+          );
+        } else {
+          showNotification(
+            "✅ Booking submitted! We'll contact you soon.",
+            "success"
+          );
+        }
+      } catch (emailError) {
+        console.error("Email error:", emailError);
         showNotification(
-          "✅ Booking submitted! Check your email for confirmation.",
-          "success"
-        );
-      } else if (customerResult.success) {
-        showNotification(
-          "✅ Booking submitted! Confirmation email sent.",
-          "success"
-        );
-      } else {
-        showNotification(
-          "✅ Booking submitted! We'll contact you soon.",
+          "✅ Booking saved! We'll send confirmation shortly.",
           "success"
         );
       }
+
+      if (onBookingSuccess) {
+        onBookingSuccess();
+      }
+
+      // Notify parent component
+      if (onBookingSuccess) {
+        onBookingSuccess();
+      }
+
+      // Reset form
+      setBookingForm({
+        name: "",
+        email: "",
+        phone: "",
+        service: "",
+        date: "",
+        time: "",
+        notes: "",
+      });
+      setErrors({});
     } catch (error) {
-      console.error("Email error:", error);
+      console.error("Booking error:", error);
       showNotification(
-        "✅ Booking saved! We'll send confirmation shortly.",
-        "success"
+        "❌ Failed to submit booking. Please try again.",
+        "error"
       );
     }
-
-    // Reset form
-    setBookingForm({
-      name: "",
-      email: "",
-      phone: "",
-      service: "",
-      date: "",
-      time: "",
-      notes: "",
-    });
-    setErrors({});
   };
-
   return (
     <section id="booking" className="py-20 px-4">
       <div className="max-w-4xl mx-auto">

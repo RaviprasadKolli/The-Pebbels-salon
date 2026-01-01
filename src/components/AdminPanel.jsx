@@ -4,11 +4,13 @@ import { sendStatusUpdateEmail } from "./utils/emailService";
 
 export default function AdminPanel({
   bookings,
+  isLoading,
   updateBookingStatus,
   deleteBooking,
+  onRefresh,
 }) {
   const handleConfirm = async (booking) => {
-    // Update status in state
+    // Update status in Firebase
     updateBookingStatus(booking.id, "confirmed");
 
     // Send email notification to customer
@@ -20,7 +22,6 @@ export default function AdminPanel({
         alert("✅ Booking confirmed! (Email notification failed)");
       }
     } catch {
-      // Removed 'error' parameter since we're not using it
       alert("✅ Booking confirmed! (Email pending)");
     }
   };
@@ -34,7 +35,7 @@ export default function AdminPanel({
       return;
     }
 
-    // Update status in state
+    // Update status in Firebase
     updateBookingStatus(booking.id, "cancelled");
 
     // Send email notification to customer
@@ -46,7 +47,6 @@ export default function AdminPanel({
         alert("❌ Booking cancelled. (Email notification failed)");
       }
     } catch {
-      // Removed 'error' parameter since we're not using it
       alert("❌ Booking cancelled. (Email pending)");
     }
   };
@@ -55,18 +55,80 @@ export default function AdminPanel({
     <section className="py-20 px-4 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white p-8 rounded-2xl shadow-xl">
-          <h2 className="text-3xl font-bold mb-6 flex items-center">
-            <Users className="w-8 h-8 mr-3 text-pink-600" />
-            Admin Panel - Booking Management
-          </h2>
+          {/* Header with Refresh Button */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold flex items-center">
+              <Users className="w-8 h-8 mr-3 text-pink-600" />
+              Admin Panel - Booking Management
+            </h2>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg
+                  className={`w-5 h-5 mr-2 ${isLoading ? "animate-spin" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                {isLoading ? "Refreshing..." : "Refresh"}
+              </button>
+            )}
+          </div>
 
-          {bookings.length === 0 ? (
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin h-12 w-12 border-4 border-pink-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-500 text-lg">
+                Loading bookings from Firebase...
+              </p>
+            </div>
+          ) : bookings.length === 0 ? (
+            /* Empty State */
             <div className="text-center py-12">
               <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">No bookings yet</p>
+              <p className="text-gray-400 text-sm mt-2">
+                Bookings will appear here once customers make appointments
+              </p>
             </div>
           ) : (
+            /* Bookings List */
             <div className="space-y-4">
+              {/* Booking Count */}
+              <div className="bg-gradient-to-r from-pink-50 to-purple-50 p-4 rounded-lg border border-pink-200">
+                <p className="text-gray-700 font-semibold">
+                  📊 Total Bookings:{" "}
+                  <span className="text-pink-600">{bookings.length}</span>
+                  {" | "}
+                  Pending:{" "}
+                  <span className="text-yellow-600">
+                    {bookings.filter((b) => b.status === "pending").length}
+                  </span>
+                  {" | "}
+                  Confirmed:{" "}
+                  <span className="text-green-600">
+                    {bookings.filter((b) => b.status === "confirmed").length}
+                  </span>
+                  {" | "}
+                  Cancelled:{" "}
+                  <span className="text-red-600">
+                    {bookings.filter((b) => b.status === "cancelled").length}
+                  </span>
+                </p>
+              </div>
+
+              {/* Bookings */}
               {bookings.map((booking) => (
                 <div
                   key={booking.id}
@@ -109,6 +171,12 @@ export default function AdminPanel({
                         {booking.notes && (
                           <p className="md:col-span-2">
                             <strong>Notes:</strong> {booking.notes}
+                          </p>
+                        )}
+                        {booking.createdAt && (
+                          <p className="md:col-span-2 text-xs text-gray-500">
+                            <strong>Booked on:</strong>{" "}
+                            {new Date(booking.createdAt).toLocaleString()}
                           </p>
                         )}
                       </div>
