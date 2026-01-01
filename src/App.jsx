@@ -48,16 +48,23 @@ function App() {
     checkAdminSession()
   );
 
-  // Load bookings from Firebase when app starts
-
-  // Load bookings from Firebase
-  const loadBookings = useCallback(() => {
+  // Load bookings from Supabase
+  const loadBookings = useCallback(async () => {
     setIsLoadingBookings(true);
 
-    // Get bookings from localStorage (synchronous)
-    const bookings = getAllBookings();
-    setBookings(bookings);
-    console.log("📚 Loaded bookings:", bookings.length);
+    try {
+      const result = await getAllBookings(); // ✅ Added await
+      if (result.success) {
+        setBookings(result.bookings);
+        console.log("📚 Loaded bookings:", result.bookings.length);
+      } else {
+        console.error("Failed to load bookings:", result.error);
+        setBookings([]); // ✅ Set empty array on error
+      }
+    } catch (error) {
+      console.error("Error loading bookings:", error);
+      setBookings([]); // ✅ Set empty array on error
+    }
 
     setIsLoadingBookings(false);
   }, []);
@@ -119,7 +126,7 @@ function App() {
   };
 
   const updateBookingStatus = async (id, status) => {
-    const result = await updateBookingStatusInDB(id, status);
+    const result = await updateBookingStatusInDB(id, status); // ✅ Added await
     if (result.success) {
       // Update local state
       setBookings((prevBookings) =>
@@ -132,7 +139,7 @@ function App() {
 
   const deleteBooking = async (id) => {
     if (window.confirm("Are you sure you want to delete this booking?")) {
-      const result = await deleteBookingFromDB(id);
+      const result = await deleteBookingFromDB(id); // ✅ Added await
       if (result.success) {
         // Remove from local state
         setBookings((prevBookings) => prevBookings.filter((b) => b.id !== id));
