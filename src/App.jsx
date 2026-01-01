@@ -13,7 +13,7 @@ import {
   getAllBookings,
   updateBookingStatus as updateBookingStatusInDB,
   deleteBooking as deleteBookingFromDB,
-} from "./services/storageService";
+} from "./services/supabaseService";
 
 // Helper function to check if admin session is valid
 const checkAdminSession = () => {

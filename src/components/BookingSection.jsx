@@ -4,7 +4,7 @@ import {
   sendBookingConfirmation,
   sendAdminNotification,
 } from "./utils/emailService";
-import { addBooking } from "../services/storageService";
+import { addBooking } from "../services/supabaseService";
 
 // Service ID: service_2j4xuub
 // Template ID (Customer): template_e7dp1c6
@@ -213,7 +213,8 @@ export default function BookingSection({ onBookingSuccess }) {
 
     try {
       // Save to localStorage
-      const result = addBooking({
+      const result = await addBooking({
+        // ✅ CORRECT - added await
         ...bookingForm,
         email: bookingForm.email.toLowerCase(),
       });

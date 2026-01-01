@@ -13,7 +13,7 @@ import {
 import {
   getBookingsByEmail,
   getBookingsByPhone,
-} from "../services/storageService";
+} from "../services/supabaseService";
 
 export default function BookingStatus() {
   const [searchEmail, setSearchEmail] = useState("");
