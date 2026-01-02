@@ -22,36 +22,40 @@ export default function BookingStatus() {
   const [searched, setSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     setIsSearching(true);
     setSearched(false);
 
-    // Simulate loading delay for better UX
-    setTimeout(() => {
-      try {
-        let result;
+    try {
+      let result;
 
-        if (searchEmail) {
-          result = getBookingsByEmail(searchEmail);
-        } else if (searchPhone) {
-          result = getBookingsByPhone(searchPhone);
-        }
-
-        if (result && result.success) {
-          setFoundBookings(result.bookings);
-          console.log("Found bookings:", result.bookings.length);
-        } else {
-          setFoundBookings([]);
-        }
-      } catch (error) {
-        console.error("Search error:", error);
-        setFoundBookings([]);
+      if (searchEmail) {
+        console.log("🔍 Searching by email:", searchEmail);
+        result = await getBookingsByEmail(searchEmail);
+      } else if (searchPhone) {
+        console.log("🔍 Searching by phone:", searchPhone);
+        result = await getBookingsByPhone(searchPhone);
       }
 
-      setSearched(true);
-      setIsSearching(false);
-    }, 300);
+      if (result && result.success) {
+        setFoundBookings(result.bookings);
+        console.log(
+          "✅ Search results:",
+          result.bookings.length,
+          "bookings found"
+        );
+      } else {
+        setFoundBookings([]);
+        console.log("❌ No bookings found");
+      }
+    } catch (error) {
+      console.error("❌ Search error:", error);
+      setFoundBookings([]);
+    }
+
+    setSearched(true);
+    setIsSearching(false);
   };
 
   const getStatusIcon = (status) => {
@@ -253,7 +257,7 @@ export default function BookingStatus() {
                         </span>
                       </div>
                       <span className="text-sm text-gray-500">
-                        Booking #{booking.id.substring(0, 8)}
+                        Booking #{booking.id} {/* ✅ Just show the number */}
                       </span>
                     </div>
 

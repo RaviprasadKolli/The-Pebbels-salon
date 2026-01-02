@@ -63,14 +63,18 @@ export const getAllBookings = async () => {
  */
 export const getBookingsByEmail = async (email) => {
   try {
+    // Convert search email to lowercase to match stored format
+    const searchEmail = email.toLowerCase();
+
     const { data, error } = await supabase
       .from("bookings")
       .select("*")
-      .ilike("email", email)
+      .eq("email", searchEmail) // ✅ Exact match with lowercase
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
+    console.log(`🔍 Found ${data.length} bookings for: ${searchEmail}`);
     return { success: true, bookings: data };
   } catch (error) {
     console.error("❌ Error getting bookings by email:", error);
