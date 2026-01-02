@@ -7,6 +7,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Create Supabase client
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+console.log("🔥 Supabase URL:", supabaseUrl);
+console.log("🔑 Supabase Key:", supabaseAnonKey?.substring(0, 20) + "...");
+
 /**
  * Add a new booking
  */
